@@ -14,7 +14,7 @@ async function main() {
     host: 'localhost',
     user: 'root',
     password: 'Ayan@1012',
-    database: 'shams',
+    database: 'spc',
     port: 3306,
     waitForConnections: true,
     connectionLimit: 5,
