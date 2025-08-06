@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shams Reports</title>
+  <!-- Favicon so the tab shows the same logo -->
+  <link rel="icon" type="image/png" href="/uploads/MultyLogo.png" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+  <style>
+    body { background: #fff; }
+    /* Reduce global paddings */
+    .container { padding: 0.25rem; }
+    .box, .p-4 { padding: 0.5rem !important; }
+    .column { padding: 0.5rem !important; }
+    #filtersBox { padding: 0.5rem !important; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    #resultTable {
+      border-collapse: collapse;
+    }
+    #resultTable th, #resultTable td {
+      font-size: 0.8rem;
+      border: 1px solid #ddd;
+      padding: 0.25rem 0.5rem;
+    }
+    .is-hidden { display: none; }
+    /* Compact styling for status/error/loading messages */
+    #loading,
+    #errorBox,
+    #stats {
+      padding: 0.25rem 0.5rem !important;
+      font-size: 0.75rem !important;
+    }
+    /* Center the Reports title horizontally */
+    .headingg {
+      position:absolute;
+      top:25px;
+      left:50%;
+      transform:translateX(-50%);
+      text-align:center;
+      text-transform:uppercase;
+      color:#EF6F53;
+      z-index:2;
+    }
+
+    /* Custom fetch button color */
+    .btn-fetch {
+      background-color: #1976d2 !important;
+      border-color: #EF6F53 !important;
+      color: #fff;
+      padding: 0.1rem !important;
+      font-size: 0.8rem !important;
+      margin-top:-0.5rem;
+    }
+
+    /* Hover effect for Fetch Report button (when enabled) */
+    .btn-fetch:hover:not([disabled]) {
+      background-color: #EF6F53 !important; /* slightly darker blue */
+      border-color: #1976d2 !important;
+      color: #fff !important;
+    }
+
+    /* Hover effect for Download CSV button */
+    #csvBtn {
+      background-color: #EF6F53 !important;
+      border-color: #1976d2 !important;
+      color: #fff;
+      padding: 0.1rem !important;
+      font-size: 0.8rem !important;
+      margin-top:-0.5rem;
+    }
+
+    #csvBtn:hover {
+      background-color: #1976d2 !important;
+      color: #fff !important;
+      border-color: #EF6F53 !important;
+      font-size: 0.8rem !important;
+    }
+    
+     /* Row background colors based on record type */
+     .row-inbound {
+      background-color: #e3f2fd; /* light blue */
+    }
+    .row-outbound {
+      background-color: #e8f5e9; /* light green */
+    }
+    .row-campaign {
+      background-color: #ffebee; /* lightest red */
+    }
+
+    /* Disable Bulma hover override so custom colors remain */
+    table.is-hoverable tbody tr:hover {
+      background-color: inherit !important;
+    }
+
+    /* Inner history tables */
+    .history-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 450px;
+    }
+    .history-table th, .history-table td {
+      border: 1px solid #dcdcdc;
+      font-size: 0.7rem;
+      padding: 2px 4px;
+      text-align: center;
+    }
+    .history-table thead {
+      background: #f5f5f5;
+    }
+
+    .account-row .label.is-small {
+      font-size: 0.75rem;
+      padding: 0.1rem 0.25rem;
+    }
+    .account-row input.is-small {
+      font-size: 0.75rem;
+      padding: 0.1rem 0.25rem;
+    }
+    /* Layout: form uses 30 % of the viewport height; table 50 % */
+    #filterForm{
+      max-height:40vh;   /* 30 % of screen height */
+      overflow-y:auto;   /* scroll if it grows taller */
+    }
+    .table-container{
+      max-height:37.5vh;   /* 50 % of screen height */
+      overflow-y:auto;   /* scroll the table body */
+    }
+
+    /* --- Filter form compact spacing --- */
+    #filterForm .column{
+      padding-top:0.25rem !important;
+      padding-bottom:0.25rem !important;
+    }
+    #filterForm .field{
+      margin-bottom:0.25rem !important;
+    }
+    /* Smaller labels for datetime inputs (labels that are not .is-small) */
+    #filterForm .label:not(.is-small){
+      font-size:0.8rem;
+      margin-bottom:0.1rem;
+    }
+
+    /* --- Pagination bar below table --- */
+    #pageNav {
+      margin-top: 0.5rem;
+      background: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      box-shadow: 0 -1px 4px rgba(0,0,0,0.05);
+    }
+    #pageNav span {
+      flex: 1;
+      text-align: center;
+    }
+    #pageNav .pagination-previous,
+    #pageNav .pagination-next {
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    /* --- Sticky table header --- */
+    #resultTable thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3; /* above body rows */
+      background: #c3c3c3; /* ensure it covers row colours */
+    }
+
+    /* Active search filter with value */
+    .filter-active {
+      background-color: #1976d2 !important; /* blue background */
+      border-color: #EF6F53 !important;     /* orange border */
+      color: #fff !important;               /* white text */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <img src="/uploads/logo.webp" alt="Logo" width="250" />
+    </div>
+
+    <!-- <h1 class="title has-text-centered headingg">Reports</h1> -->
+    <form id="filterForm" class="box p-4">
+      <div class="field is-horizontal account-row">
+        <div class="field-label is-normal"><label class="label is-small">Account</label></div>
+        <div class="field-body">
+          <input id="account" class="input is-small" type="text" value="shams" disabled required style="max-width: 120px;" />
+        </div>
+      </div>
+
+      <div class="columns is-variable is-2">
+        <div class="column">
+          <label class="label">Start datetime</label>
+          <input id="start" class="input" type="datetime-local" required />
+        </div>
+        <div class="column">
+          <label class="label">End datetime</label>
+          <input id="end" class="input" type="datetime-local" required />
+        </div>
+      </div>
+
+      <!-- Search filters (initially visible) -->
+      <div id="filtersBox" class="box p-4">
+        <div id="filtersGrid" class="columns is-multiline"></div>
+      </div>
+
+      <div class="field has-text-centered">
+        <button id="fetchBtn" type="submit" class="button is-primary btn-fetch" disabled>Fetch Report</button>
+      </div>
+    </form>
+
+    <div id="loading" class="notification is-info is-light is-hidden">
+      Loading… Please wait.
+    </div>
+    <div id="errorBox" class="notification is-danger is-light is-hidden"></div>
+
+    <!-- Record count will be displayed here -->
+    <div id="stats" class="notification is-primary is-light is-hidden"></div>
+
+    <div class="table-container">
+      <table id="resultTable" class="table is-fullwidth"></table>
+    </div>
+
+    <div id="pageNav">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+
+    <div class="has-text-centered">
+      <button id="csvBtn" class="button is-link is-light" disabled>Download CSV</button>
+    </div>
+
+    <div class="mt-1 has-text-centered">Copyright @ 2025. All Rights Reserved by Multycomm</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.2/build/global/luxon.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
